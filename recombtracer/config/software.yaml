@@ -1,0 +1,6 @@
+software:
+  version: 0.0.1v
+  app_name: RecombTracer
+  author: RecombTracer Team
+  email: team@recombtracer.org
+  description: Recombination breakpoint detection in MAGIC populations

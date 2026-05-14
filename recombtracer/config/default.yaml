@@ -1,0 +1,17 @@
+software:
+  name: RecombTracer
+  version: 0.1.0
+  author: RecombTracer Team
+  email: team@recombtracer.org
+  description: Recombination breakpoint detection in MAGIC populations
+
+logs:
+  log_level: INFO
+  more_info: false
+  project_id: RecombTracer
+
+analysis:
+  smooth_window: 5
+  min_segment_snps: 5
+  min_segment_bp: 1000
+  min_posterior: 0.8

@@ -14,12 +14,23 @@ from rich.align import Align
 from rich.console import Console
 from rich_gradient import Gradient
 
+# Load custom functions from the configuration module
+# Compatible with both package import and direct execution
+if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    _project_root = Path(__file__).resolve().parent.parent.parent
+    if str(_project_root) not in sys.path:
+        sys.path.insert(0, str(_project_root))
+    from recombtracer.utils.configuration import load_software_config
+else:
+    from .configuration import load_software_config
+
 try:
     from rich_gradient import Text as GradientText
     GRADIENT_AVAILABLE = True
 except ImportError:
     GRADIENT_AVAILABLE = False
-
 
 
 class LogoDisplay:
@@ -110,7 +121,7 @@ class LogoDisplay:
         ░▄▀▄░▀▀█░▄▀▄░░█░░▄▀░░░▀▄░░█░░▄▀░░░▀▄
         ░▀░▀░▀▀▀░▀░▀░▀▀▀░▀▀▀░▀▀░░▀▀▀░▀▀▀░▀▀░
         """
-        ascii_type_5 = """
+        ascii_type_5 = r"""
         __  ______  ___ ____  _____ _ ____  _____ 
         \ \/ / _\ \/ / |___ \|___ // |___ \|___ / 
          \  /\ \ \  /| | __) | |_ \| | __) | |_ \ 
@@ -141,7 +152,7 @@ class LogoDisplay:
         ┏╋┛┗━┓┏╋┛ ┃ ┏━┛╺━┫ ┃ ┏━┛╺━┫
         ╹ ╹┗━┛╹ ╹╺┻╸┗━╸┗━┛╺┻╸┗━╸┗━┛
         """
-        ascii_type_10 = """
+        ascii_type_10 = r"""
            _     _      _     _      _     _123123
           (c).-.(c)    (c).-.(c)    (c).-.(c)     
            / ._. \      / ._. \      / ._. \      
@@ -235,25 +246,27 @@ def show_logo(style:str ="welcome",
 def config2logo(config:dict = None) -> None:
     """
     Extracts information from a config dictionary to show the "welcome" logo.
+    Accepts either the full config dict (with a 'software' key) or just the
+    software section dict.
     """
+    # Handle both full config and software-section-only config
+    if "software" in config:
+        sw = config["software"]
+    else:
+        sw = config
+    
     show_logo(
         "welcome",
-        version=config['software']['version'],
-        app_name=config['software']['app_name'],
-        description=config['software']['description'],
-        rice_color=config['software'].get('rice_color', 'bold cyan'),
-        use_gradient= True,
+        version=sw.get("version", "unknown"),
+        app_name=sw.get("app_name", "RecombTracer"),
+        description=sw.get("description", ""),
+        rice_color=sw.get("rice_color", "bold cyan"),
+        use_gradient=True,
         gradient_colors=["red", "#ff9900", "#ff0", "Lime"]
     )
 
 if __name__ == "__main__":
-    # Create a test config dict to test the function
-    Test_config = {
-        'software': {
-            'version': 'v0.0.1-test',
-            'app_name': 'MyTestApp',
-            'description': 'This is a test with gradient effect.',
-        }
-    }
-    config2logo(config = Test_config)
-    
+    # get software configuration from the config file
+    _software_conf = load_software_config()
+    SOFTWARE_INFO = _software_conf.get("software", {})
+    config2logo(config=SOFTWARE_INFO)

@@ -31,6 +31,8 @@ dependencies = [
     "pandas",
     "scipy",
     "cyvcf2",
+    "pyyaml>=6.0",
+    "rich",
 ]
 
 [project.optional-dependencies]
@@ -47,4 +49,8 @@ Homepage = "https://github.com/yourusername/recombtracer"
 Repository = "https://github.com/yourusername/recombtracer"
 
 [tool.setuptools.packages.find]
-where = ["recombtracer "]
+where = ["."]
+include = ["recombtracer*"]
+
+[tool.setuptools.package-data]
+recombtracer = ["config/*.yaml"]

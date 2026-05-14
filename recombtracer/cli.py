@@ -4,8 +4,8 @@
 import argparse
 import sys
 import os
-from .recombiner import demo as demo_recombiner
-from .hmm import demo_hmm
+from .core.recombiner import demo as demo_recombiner
+from .core.hmm import demo_hmm
 
 
 def main():
@@ -126,7 +126,7 @@ def main():
     elif args.command == "demo-hmm":
         demo_hmm()
     elif args.command == "convert-vcf":
-        from .vcf import list_vcf_samples, vcf_to_magic_inputs, save_chromosome_npz
+        from .core.vcf import list_vcf_samples, vcf_to_magic_inputs, save_chromosome_npz
 
         parent_samples = [s.strip() for s in args.parents.split(",")]
         all_samples = list_vcf_samples(args.vcf)
@@ -174,9 +174,9 @@ def main():
         print(f"  Progeny : {len(magic_data['progeny_haps'])} individuals")
 
     elif args.command == "run":
-        from .vcf import load_chromosome_npz
-        from .recombiner import MagicRecombiner
-        from .hmm import run_hmm_refinement
+        from .core.vcf import load_chromosome_npz
+        from .core.recombiner import MagicRecombiner
+        from .core.hmm import run_hmm_refinement
         import pandas as pd
 
         if not os.path.isfile(args.npz):
