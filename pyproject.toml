@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "recombtracer"
+version = "0.1.0"
+description = "Recombination breakpoint detection in MAGIC populations"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "RecombTracer Team"},
+]
+keywords = ["MAGIC", "recombination", "haplotype", "PBWT", "HMM", "genetics"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "cyvcf2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+]
+
+[project.scripts]
+recombtracer = "recombtracer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/recombtracer"
+Repository = "https://github.com/yourusername/recombtracer"
+
+[tool.setuptools.packages.find]
+where = ["recombtracer "]

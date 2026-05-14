@@ -1,0 +1,34 @@
+# Binaries
+pbwt
+
+# Object files
+*.o
+
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Version file
+/version.h
+
+# dir
+./pbwt
+./test
+test
+./result
+./test_output
+./test_pkg_output
+./magic_input
+__pycache__
+./__pycache__
