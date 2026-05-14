@@ -1,82 +1,130 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Loguru-based logger initialization with Hydra/OmegaConf integration.
+Loguru-based logger initialization.
 
-Heavy dependencies (loguru, omegaconf, hydra) are imported lazily inside
-functions so that importing this module does not fail when they are absent.
+Loguru is imported at module level with a fallback so that ``import``
+succeeds even when loguru is not installed.  An :class:`ImportError` is
+raised only when logger functions are actually called.
 """
 
 import datetime
+import sys
+from pathlib import Path
 
-
-def logger_init(logger_name: str, cfg: "DictConfig") -> "Logger":
-    """
-    Configure and return a Loguru logger instance.
-
-    Parameters
-    ----------
-    logger_name : str
-        Path to the log file.
-    cfg : DictConfig
-        Configuration object with a ``logs`` section.
-
-    Returns
-    -------
-    Logger
-        Configured Loguru logger.
-    """
+try:
     from loguru import logger
-    from omegaconf import DictConfig
+    _LOGURU_AVAILABLE = True
+except ImportError:
+    _LOGURU_AVAILABLE = False
+    logger = None
+
+
+def _ensure_loguru() -> None:
+    if not _LOGURU_AVAILABLE:
+        raise ImportError("loguru is required for logging. Install it with: pip install loguru")
+
+
+def logger_init(
+    logger_name: str = None,
+    log_level: str = "INFO",
+    more_info: bool = False,
+) -> "logger":
+    """
+    Configure Loguru logger with simple, clean output.
+    """
+    _ensure_loguru()
+
+    from .configuration import load_default_config
+    default = load_default_config()
+    cfg_logs = default.get("logs", {})
+
+    log_level = log_level or cfg_logs.get("log_level", "INFO")
+    more_info = more_info if more_info is not None else cfg_logs.get("more_info", False)
 
     logger.remove()
-    if cfg.logs.more_info:
-        fmt = (
-            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> |"
-            "{level.icon}|"
-            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+
+    # Simple console format
+    if more_info:
+        console_fmt = (
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+        )
+    else:
+        console_fmt = (
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
             "<level>{message}</level>"
         )
-        logger.add(logger_name, format=fmt, level=cfg.logs.log_level, colorize=True, serialize=False)
-        logger.add(logger_name, format=fmt, level=cfg.logs.log_level, colorize=True, serialize=False)
-    else:
-        fmt = (
-            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
-            "<level>{level}</level> | <level>{message}</level>"
+
+    # Add Console Handler
+    logger.add(
+        sys.stderr,
+        format=console_fmt,
+        level=log_level,
+        colorize=True,
+    )
+
+    # Add File Handler if name provided
+    if logger_name:
+        logger.add(
+            logger_name,
+            format=console_fmt,
+            level=log_level,
+            colorize=False,
         )
-        logger.add(logger_name, format=fmt, level=cfg.logs.log_level, colorize=True, serialize=False)
-        logger.add(logger_name, format=fmt, level=cfg.logs.log_level, colorize=True, serialize=False)
+    
     return logger
 
 
-def logger_generator(cfg: "DictConfig") -> tuple:
+def logger_generator(
+    output_dir: str,
+    log_level: str = "INFO",
+    more_info: bool = False,
+) -> tuple:
     """
-    Generate a logger and output directory based on Hydra runtime config.
+    Create a logger, log software metadata, and return ``(logger, output_dir)``.
+
+    Software metadata (name, version, author, email) is read from
+    ``recombtracer/config/software.yaml``.
 
     Parameters
     ----------
-    cfg : DictConfig
-        Full OmegaConf configuration.
+    output_dir : str
+        Directory where the log file will be written.
+    log_level : str
+        Minimum logging level.  Default: INFO.
+    more_info : bool
+        If True, use the verbose format with file/line info.  Default: False.
 
     Returns
     -------
     tuple
-        (logger, output_dir)
+        ``(logger, output_dir)``
     """
-    from hydra.core.hydra_config import HydraConfig
-    from loguru import logger
+    _ensure_loguru()
+
+    # Lazy import to avoid circular dependencies.
+    from .configuration import load_software_config, load_default_config
+
+    software = load_software_config()
+    default = load_default_config()
+
+    sw = software.get("software", {})
+    label = default.get("logs", {}).get("Label", "RecombTracer")
 
     times = datetime.datetime.now().strftime("%Y-%m-%d:%X:%p")
-    output_dir = HydraConfig.get().runtime.output_dir
-    logger_name = f"{output_dir}/{cfg.logs.project_id}_{times}.log"
+    logger_name = f"{output_dir}/{label}_{times}.log"
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # Remove the default logger to avoid duplicate logs
-    logger = logger_init(logger_name, cfg)
-    logger.info(f"RecombTracer Author:{cfg.RecombTracer.Author}")
-    logger.info(f"RecombTracer Version:{cfg.RecombTracer.Version}")
-    logger.info(f"RecombTracer Email:{cfg.RecombTracer.Email}")
-    logger.info(f"Logger initialized, log file: {logger_name}")
-    logger.info(f"RecombTracer Analysis workspace: {HydraConfig.get().runtime.cwd}")
-    logger.info(f"RecombTracer Analysis Result: {output_dir}")
-    logger.debug(f"Full config: {cfg}")
+    logger = logger_init(logger_name, log_level=log_level, more_info=more_info)
+
+    logger.info(f"RecombTracer Author : {sw.get('author', 'unknown')}")
+    logger.info(f"RecombTracer Version : {sw.get('version', 'unknown')}")
+    logger.info(f"RecombTracer Email : {sw.get('email', '')}")
+    logger.info(f"Logger initialized, log file : {logger_name}")
+    logger.info(f"RecombTracer Analysis Result : {output_dir}")
+    logger.debug(f"Software Full config : {software}")
+    logger.debug(f"Default Full config : {default}")
     return logger, output_dir

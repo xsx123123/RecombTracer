@@ -2,13 +2,13 @@ software:
   name: RecombTracer
   version: 0.1.0
   author: RecombTracer Team
-  email: team@recombtracer.org
-  description: Recombination breakpoint detection in MAGIC populations
+  email: zhangjian199567@outlook.com
+  description: Recombination breakpoint detection in synthetic multi-parental populations
 
 logs:
   log_level: INFO
   more_info: false
-  project_id: RecombTracer
+  Label: RecombTracer
 
 analysis:
   smooth_window: 5

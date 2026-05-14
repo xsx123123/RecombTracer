@@ -39,7 +39,7 @@ from .core.hmm import (
 # VCF I/O utilities
 from .core.vcf import (
     list_vcf_samples,
-    extract_chromosome,
+    extract_homozygous_chromosome,
     vcf_to_magic_inputs,
     load_chromosome_npz,
     save_chromosome_npz,

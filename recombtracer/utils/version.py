@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 import sys
 import platform
 import importlib.metadata as importlib_metadata

@@ -11,7 +11,7 @@ can be imported directly from this package::
 from .hmm import HMMParams, MagicHMM, run_hmm_refinement
 from .recombiner import AncestrySegment, MagicRecombiner, MatchSegment
 from .vcf import (
-    extract_chromosome,
+    extract_homozygous_chromosome,
     list_vcf_samples,
     load_chromosome_npz,
     save_chromosome_npz,
@@ -29,7 +29,7 @@ __all__ = [
     "AncestrySegment",
     # VCF I/O utilities
     "list_vcf_samples",
-    "extract_chromosome",
+    "extract_homozygous_chromosome",
     "vcf_to_magic_inputs",
     "load_chromosome_npz",
     "save_chromosome_npz",
