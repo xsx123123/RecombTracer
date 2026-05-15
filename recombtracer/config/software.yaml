@@ -3,4 +3,5 @@ software:
   app_name: RecombTracer
   author: RecombTracer Team
   email: zhangjian199567@outlook.com
+  url: https://github.com/xsx123123/RecombTrac
   description: Recombination breakpoint detection in synthetic multi-parental populations

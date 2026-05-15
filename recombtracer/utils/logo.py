@@ -63,6 +63,7 @@ class LogoDisplay:
                  version: str = "v1.0.0",
                  app_name:str = "RecombTracer",
                  description:str = "Genome Recombination Analysis Tool",
+                 url: str = "",
                  rice_color:str = "bold cyan",
                  gradient_colors: list = None,
                  use_gradient: bool = False,
@@ -72,6 +73,7 @@ class LogoDisplay:
         self.app_name = app_name
         self.version = version
         self.description = description
+        self.url = url
         self.rice_color = rice_color
         self.use_gradient = use_gradient and GRADIENT_AVAILABLE
         if gradient_scheme == "random":
@@ -167,22 +169,31 @@ class LogoDisplay:
         # Create a list of all logos
         all_logos = [
             ascii_type_1,
-            ascii_type_2,
-            ascii_type_3,
+            # ascii_type_2,
+            # ascii_type_3,
             ascii_type_4,
-            ascii_type_5,
+            # ascii_type_5,
             ascii_type_6,
             ascii_type_7,
-            ascii_type_8,
+            # ascii_type_8,
             ascii_type_9,
-            ascii_type_10
+            # ascii_type_10,
+            # ascii_type_11,
+            # ascii_type_12,
+            # ascii_type_13,
+            # ascii_type_14,
+            # ascii_type_15,
+            # ascii_type_16,
+            # ascii_type_17
         ]
 
         return random.choice(all_logos)
     
     def display_welcome_logo(self):
-        welcome_text = f"""{self.app_name}:{self.version}\n        {self.description}\n"""
-        logo_text = self.create_ascii_logo()
+        import textwrap
+        url_line = f"\n{self.url}\n" if self.url else "\n"
+        welcome_text = f"{self.app_name}:{self.version}\n{self.description}{url_line}"
+        logo_text = textwrap.dedent(self.create_ascii_logo())
         full_text_content = logo_text + welcome_text
         
         if self.use_gradient:
@@ -221,6 +232,7 @@ def show_logo(style:str ="welcome",
               version: str = "v1.0.0",
               app_name:str = "RecombTracer",
               description:str = "Genome Recombination Analysis Tool",
+              url: str = "",
               rice_color:str = "bold cyan",
               use_gradient: bool = True,
               gradient_colors: list = None,
@@ -233,6 +245,7 @@ def show_logo(style:str ="welcome",
         version = version,
         app_name = app_name,
         description = description,
+        url = url,
         rice_color = rice_color,
         use_gradient = use_gradient,
         gradient_colors = gradient_colors,
@@ -260,9 +273,10 @@ def config2logo(config:dict = None) -> None:
         version=sw.get("version", "unknown"),
         app_name=sw.get("app_name", "RecombTracer"),
         description=sw.get("description", ""),
+        url=sw.get("url", ""),
         rice_color=sw.get("rice_color", "bold cyan"),
         use_gradient=True,
-        gradient_colors=["red", "#ff9900", "#ff0", "Lime"]
+        gradient_scheme="random",
     )
 
 if __name__ == "__main__":

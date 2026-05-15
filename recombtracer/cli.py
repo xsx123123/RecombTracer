@@ -11,9 +11,22 @@ commands. All business logic lives in ``recombtracer.core.pipeline``.
 import argparse
 import sys
 
+from rich_argparse import RichHelpFormatter
+
 from . import SOFTWARE_INFO
 from .utils import config2logo, show_versions
-from .core.pipeline import handle_convert_vcf, handle_run
+from .core.convert import handle_convert_vcf
+from .core.run import handle_run
+from .core.pipeline import handle_pipeline
+
+
+class _LogoHelpAction(argparse.Action):
+    """Custom help action that prints logo before help text."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        config2logo(SOFTWARE_INFO)
+        parser.print_help()
+        parser.exit()
 
 
 # ── Common arguments shared by all subcommands 
@@ -33,7 +46,16 @@ def add_convert_vcf_parser(subparsers):
     parser = subparsers.add_parser(
         "convert-vcf",
         parents=[_common_parent],
+        formatter_class=RichHelpFormatter,
+        add_help=False,
         help="Convert a VCF to synthetic multi-parental Recombiner inputs (.npz)",
+    )
+    parser.add_argument(
+        "-h", "--help",
+        action=_LogoHelpAction,
+        nargs=0,
+        default=False,
+        help="Show this help message and exit",
     )
     parser.add_argument("vcf", help="Input VCF (.vcf.gz)")
     parser_req = parser.add_argument_group("required arguments")
@@ -71,7 +93,16 @@ def add_run_parser(subparsers):
     parser = subparsers.add_parser(
         "run",
         parents=[_common_parent],
+        formatter_class=RichHelpFormatter,
+        add_help=False,
         help="Run PBWT + HMM recombination analysis from a .npz file",
+    )
+    parser.add_argument(
+        "-h", "--help",
+        action=_LogoHelpAction,
+        nargs=0,
+        default=False,
+        help="Show this help message and exit",
     )
     parser.add_argument("npz", help="Input .npz file (from convert-vcf)")
     parser.add_argument(
@@ -127,18 +158,111 @@ def add_run_parser(subparsers):
     )
 
 
+def _add_common_run_args(parser):
+    """Add algorithm parameters shared by ``run`` and ``pipeline``."""
+    group_algo = parser.add_argument_group("algorithm parameters")
+    group_algo.add_argument(
+        "--smooth-window",
+        type=int,
+        default=5,
+        help="PBWT median filter window size (default: 5)",
+    )
+    group_algo.add_argument(
+        "--min-segment-snps",
+        type=int,
+        default=5,
+        help="Minimum SNPs per ancestry segment (default: 5)",
+    )
+    group_algo.add_argument(
+        "--min-segment-bp",
+        type=int,
+        default=1000,
+        help="Minimum bp length per ancestry segment (default: 1000)",
+    )
+    group_algo.add_argument(
+        "--min-posterior",
+        type=float,
+        default=0.8,
+        help="Minimum HMM posterior probability at breakpoint (default: 0.8)",
+    )
+    parser.add_argument(
+        "--save-raw",
+        action="store_true",
+        help="Also save raw PBWT results (default: only HMM results)",
+    )
+    parser.add_argument(
+        "--haplotype",
+        type=int,
+        default=None,
+        help="Only analyze a specific haplotype index (default: all)",
+    )
+
+
+def add_pipeline_parser(subparsers):
+    """
+    Add parser for pipeline command (convert-vcf + run in one step).
+    """
+    parser = subparsers.add_parser(
+        "pipeline",
+        parents=[_common_parent],
+        formatter_class=RichHelpFormatter,
+        add_help=False,
+        help="Run the full pipeline: VCF → .npz → PBWT + HMM analysis",
+    )
+    parser.add_argument(
+        "-h", "--help",
+        action=_LogoHelpAction,
+        nargs=0,
+        default=False,
+        help="Show this help message and exit",
+    )
+    parser.add_argument("vcf", help="Input VCF (.vcf.gz)")
+
+    parser_req = parser.add_argument_group("required arguments")
+    parser_req.add_argument(
+        "--parents",
+        required=True,
+        help="Comma-separated list of parent sample names",
+    )
+    parser_req.add_argument(
+        "--chrom",
+        required=True,
+        help="Chromosome to extract (e.g. chr1)",
+    )
+
+    parser.add_argument(
+        "--progeny",
+        default=None,
+        help="Comma-separated list of progeny sample names (default: all non-parents)",
+    )
+    parser.add_argument(
+        "--out-dir",
+        default=".",
+        help="Output directory for all results (default: .)",
+    )
+    parser.add_argument(
+        "--keep-missing",
+        action="store_true",
+        help="Keep SNPs with missing genotypes (default: drop them)",
+    )
+
+    _add_common_run_args(parser)
+
+
 def main():
     """
     define main function for recombtracer scripts
     """
     # Create main parser (disable default -h so we can handle it manually)
     parser = argparse.ArgumentParser(
+        formatter_class=RichHelpFormatter,
         prog="recombtracer",
         description="Recombination breakpoint detection in synthetic multi-parental populations",
         add_help=False,
     )
-    # Add version flag
+    # Add version flagß
     parser.add_argument("-v", "--version", action="store_true", help="Show version information")
+
     # Add help flag manually
     parser.add_argument("-h", "--help", action="store_true", help="Show this help message and exit")
 
@@ -148,6 +272,7 @@ def main():
     # Add subcommands
     add_convert_vcf_parser(subparsers)
     add_run_parser(subparsers)
+    add_pipeline_parser(subparsers)
 
     args = parser.parse_args()
 
@@ -157,7 +282,7 @@ def main():
         parser.print_help()
         return
 
-    if args.command in ["run", "convert-vcf"]:
+    if args.command in ["run", "convert-vcf", "pipeline"]:
         config2logo(SOFTWARE_INFO)
 
     # Route commands
@@ -165,6 +290,8 @@ def main():
         handle_convert_vcf(args)
     elif args.command == "run":
         handle_run(args)
+    elif args.command == "pipeline":
+        handle_pipeline(args)
     else:
         config2logo(SOFTWARE_INFO)
         parser.print_help()

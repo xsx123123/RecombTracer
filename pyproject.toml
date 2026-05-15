@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "recombtracer"
-version = "0.0.1v"
+version = "0.0.1"
 description = "Recombination breakpoint detection in MAGIC populations"
 readme = "README.md"
 license = "MIT"
@@ -29,14 +29,15 @@ packages = [{include = "recombtracer"}]
 include = ["recombtracer/config/*.yaml"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
-numpy = "*"
-pandas = "*"
-scipy = "*"
-cyvcf2 = "*"
+python = "^3.10"
+numpy = "2.2.6"
+pandas = "2.3.3"
+scipy = "1.15.3"
+cyvcf2 = "0.33.0"
 pyyaml = ">=6.0"
-rich = "*"
-rich-gradient = "*"
+rich = "15.0.0"
+rich-gradient = "0.3.12"
+rich-argparse = "1.8.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

@@ -3,6 +3,7 @@ software:
   version: 0.1.0
   author: RecombTracer Team
   email: zhangjian199567@outlook.com
+  url: https://github.com/xsx123123/RecombTracer
   description: Recombination breakpoint detection in synthetic multi-parental populations
 
 logs:

@@ -10,7 +10,9 @@ can be imported directly from this package::
 
 from .hmm import HMMParams, MagicHMM, run_hmm_refinement
 from .recombiner import AncestrySegment, MagicRecombiner, MatchSegment
-from .pipeline import handle_convert_vcf, handle_run
+from .convert import handle_convert_vcf
+from .run import handle_run
+from .pipeline import handle_pipeline
 from .vcf import (
     extract_homozygous_chromosome,
     list_vcf_samples,
@@ -23,6 +25,7 @@ __all__ = [
     # High-level pipelines
     "handle_convert_vcf",
     "handle_run",
+    "handle_pipeline",
     # HMM refinement
     "HMMParams",
     "MagicHMM",
