@@ -1,13 +1,16 @@
 # RecombTracer
 
+**Version:** 0.0.1  
+English | [中文](docs/README_zh.md)
+
 RecombTracer is a toolkit for identifying recombination breakpoints and local ancestry in MAGIC (Multi-parent Advanced Generation Inter-Cross) populations. It combines PBWT-style chromosome painting with a Hidden Markov Model (HMM) to infer parental haplotype segments and recombination events.
 
 ## Overview
 
 The pipeline consists of two core modules:
 
-- **`recombtracer.recombiner`** — PBWT-style haplotype painting that assigns each progeny SNP to the most likely parental origin based on maximal matching segments.
-- **`recombtracer.hmm`** — HMM refinement that smooths noisy PBWT assignments into contiguous ancestry blocks and calls recombination breakpoints with confidence scores.
+- **`recombtracer.core.recombiner`** — PBWT-style haplotype painting that assigns each progeny SNP to the most likely parental origin based on maximal matching segments.
+- **`recombtracer.core.hmm`** — HMM refinement that smooths noisy PBWT assignments into contiguous ancestry blocks and calls recombination breakpoints with confidence scores.
 
 A utility module is provided for converting standard VCF files into the NumPy-based inputs required by the analysis pipeline.
 
@@ -15,23 +18,33 @@ A utility module is provided for converting standard VCF files into the NumPy-ba
 
 ## Dependencies
 
-- Python >= 3.8
-- numpy
-- pandas
-- scipy
-- cyvcf2 (for VCF I/O)
+- Python ^3.10
+- numpy 2.2.6
+- pandas 2.3.3
+- scipy 1.15.3
+- cyvcf2 0.33.0 (for VCF I/O)
+- pyyaml >=6.0
+- rich 15.0.0
+- rich-gradient 0.3.12
+- rich-argparse 1.8.0
 
-Install via pip:
+Install via pip (editable install from source):
 
 ```bash
-pip install numpy pandas scipy cyvcf2
+pip install -e .
+```
+
+Or with Poetry:
+
+```bash
+poetry install
 ```
 
 ---
 
-## VCF Conversion (`recombtracer.vcf`)
+## VCF Conversion (`recombtracer convert-vcf`)
 
-If your data starts from a VCF file (e.g. after variant calling and filtering), use `recombtracer.vcf` to extract haplotypes and convert them into the matrix format used by `MagicRecombiner`.
+If your data starts from a VCF file (e.g. after variant calling and filtering), use `recombtracer convert-vcf` to extract haplotypes and convert them into the matrix format used by `MagicRecombiner`.
 
 ### Input requirements
 
@@ -73,7 +86,7 @@ The output file (`{chrom}_magic.npz`) contains:
 ### Python API
 
 ```python
-from src.vcf_utils import vcf_to_magic_inputs, load_chromosome_npz
+from recombtracer import vcf_to_magic_inputs, load_chromosome_npz
 
 # Convert directly from VCF
 data = vcf_to_magic_inputs(
@@ -131,7 +144,23 @@ For each progeny × haplotype you will get:
 
 ---
 
-## Recombination Analysis (`recombtracer.recombiner`)
+## Full Pipeline CLI (`recombtracer pipeline`)
+
+Run the complete workflow — VCF conversion followed by PBWT + HMM analysis — in a single command:
+
+```bash
+recombtracer pipeline test/subset_remove_het.vcf.gz \
+    --parents 1,2,3,4,5,6,7,8,9,10,11 \
+    --chrom LG1 \
+    --out-dir ./results \
+    --save-raw
+```
+
+This is equivalent to running `convert-vcf` and then `run` with the same arguments. All algorithm and filtering parameters from `run` are also available here.
+
+---
+
+## Recombination Analysis (`recombtracer.core.recombiner`)
 
 Once you have the haplotype matrices, run PBWT painting:
 
@@ -180,7 +209,7 @@ rec_df = recombiner.call_recombinations(segments)
 
 ---
 
-## HMM Refinement (`recombtracer.hmm`)
+## HMM Refinement (`recombtracer.core.hmm`)
 
 To smooth noisy PBWT calls and obtain posterior probabilities, run the HMM:
 
@@ -201,18 +230,22 @@ viterbi_df, segments_df, rec_df = run_hmm_refinement(
 - `segments_df` — smoothed ancestry segments.
 - `rec_df` — HMM-filtered recombination breakpoints.
 
-Run the built-in demo to see the full pipeline on synthetic data:
-
-```bash
-recombtracer demo-hmm
-recombtracer demo-recombiner
-```
-
 ---
 
 ## Complete Workflow Example
 
-### Quick CLI pipeline
+### Quick CLI pipeline (one-shot)
+
+```bash
+# Full pipeline: VCF → .npz → PBWT + HMM
+recombtracer pipeline test/subset_remove_het.vcf.gz \
+    --parents 1,2,3,4,5,6,7,8,9,10,11 \
+    --chrom LG1 \
+    --out-dir ./results \
+    --save-raw
+```
+
+### Step-by-step CLI
 
 ```bash
 # 1. Convert VCF to NumPy inputs
@@ -272,15 +305,23 @@ for prog_name in data["progeny_names"]:
 
 ```
 .
-├── src/
-│   ├── __init__.py           # Public API exports
-│   ├── cli.py                # Unified command-line interface
-│   ├── recombiner.py         # PBWT chromosome painting
-│   ├── hmm.py                # HMM smoothing & breakpoint calling
-│   └── vcf.py                # VCF → NumPy conversion utilities
+├── recombtracer/              # Main package
+│   ├── __init__.py            # Public API exports
+│   ├── cli.py                 # Unified command-line interface
+│   ├── core/                  # Core analysis modules
+│   │   ├── recombiner.py      # PBWT chromosome painting
+│   │   ├── hmm.py             # HMM smoothing & breakpoint calling
+│   │   ├── vcf.py             # VCF → NumPy conversion utilities
+│   │   ├── convert.py         # CLI handler for convert-vcf
+│   │   ├── run.py             # CLI handler for run
+│   │   └── pipeline.py        # CLI handler for pipeline
+│   ├── config/                # Package configuration
+│   │   ├── software.yaml      # Software metadata
+│   │   └── default.yaml       # Default analysis parameters
+│   └── utils/                 # Utility modules (logging, logo, etc.)
 ├── test/
 │   └── subset_remove_het.vcf.gz   # Example VCF (het sites removed)
-├── pbwt/                     # PBWT C implementation
+├── pyproject.toml             # Poetry-based build configuration
 └── README.md
 ```
 
