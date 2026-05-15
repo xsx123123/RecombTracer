@@ -257,7 +257,7 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=RichHelpFormatter,
         prog="recombtracer",
-        description="Recombination breakpoint detection in synthetic multi-parental populations",
+        description="Recombination breakpoint detection for multi-parental populations",
         add_help=False,
     )
     # Add version flagß
