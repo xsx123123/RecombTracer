@@ -166,6 +166,22 @@ class LogoDisplay:
          `-'     `-'  `-'     `-'  `-'     `-'
          + ==================================== +
         """
+
+        ascii_type_16 = """
+        ╭─────────────────────╮
+        │  ▪ ▫ ▪ ▫ ▪ ▫ ▪ ▫ ▪  │
+        │   ◤◢  ◤◢  ◤◢  ◤◢    │
+        │  ▪ ▫ ▪ ▫ ▪ ▫ ▪ ▫ ▪  │
+        ╰─────────────────────╯
+        """
+        # 风格：圆角边框 ╭╮╯╰ + 小方点，带框装饰，融合 type_6 的 +===+ 边框
+
+        ascii_type_17 = """
+        ▛▀▀▀▜ ▛▀▀▀▜ ▛▀▀▀▜
+        ▌   ▐ ▌   ▐ ▌   ▐
+        ▌ ▄ ▐ ▌ ▄ ▐ ▌ ▄ ▐
+        ▙▄▄▄▟ ▙▄▄▄▟ ▙▄▄▄▟
+        """
         # Create a list of all logos
         all_logos = [
             ascii_type_1,
@@ -184,16 +200,15 @@ class LogoDisplay:
             # ascii_type_14,
             # ascii_type_15,
             # ascii_type_16,
-            # ascii_type_17
+            ascii_type_17
         ]
 
         return random.choice(all_logos)
     
     def display_welcome_logo(self):
-        import textwrap
-        url_line = f"\n{self.url}\n" if self.url else "\n"
-        welcome_text = f"{self.app_name}:{self.version}\n{self.description}{url_line}"
-        logo_text = textwrap.dedent(self.create_ascii_logo())
+        url_line = f"\n        {self.url}\n" if self.url else "\n"
+        welcome_text = f"""{self.app_name}:{self.version}\n        {self.description}{url_line}"""
+        logo_text = self.create_ascii_logo()
         full_text_content = logo_text + welcome_text
         
         if self.use_gradient:
