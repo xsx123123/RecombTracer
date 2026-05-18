@@ -12,25 +12,25 @@ import argparse
 import warnings
 
 
-@dataclass
-class MatchSegment:
-    """A maximal match segment: progeny haplotype i matches parent haplotype j on [start, end)"""
-    j: int
-    start: int
-    end: int
+from recombtracer.core.pbwt import PBWT, MatchSegment
 
 
 @dataclass
 class AncestrySegment:
-    """An inferred local ancestry segment"""
-    chrom: str
-    start_pos: int
-    end_pos: int
-    start_idx: int
-    end_idx: int
-    parent: str
-    haplotype: int
-    score: float
+    """
+    An inferred local ancestry segment.
+    
+    This represents a contiguous genomic region assigned to a specific parent
+    after PBWT painting and optional HMM smoothing.
+    """
+    chrom: str       # Chromosome identifier (e.g., "1", "Chr01")
+    start_pos: int   # Physical start position in base pairs (bp)
+    end_pos: int     # Physical end position in base pairs (bp)
+    start_idx: int   # Start index in the SNP matrix/array (inclusive)
+    end_idx: int     # End index in the SNP matrix/array (exclusive)
+    parent: str      # Name/ID of the inferred parental origin
+    haplotype: int   # Haplotype index (0 or 1 for diploid progeny)
+    score: float     # Confidence score (mean matching weight or posterior probability)
 
 
 class MagicRecombiner:
@@ -43,33 +43,43 @@ class MagicRecombiner:
                  parent_names: List[str],
                  positions: np.ndarray,
                  chrom: str = "1"):
-        self.P = parent_haps.shape[0]
-        self.N = parent_haps.shape[1]
-        self.parent_haps = parent_haps.astype(np.int8)
-        self.parent_names = np.array(parent_names)
-        self.positions = positions
-        self.chrom = chrom
+        """
+        Initialize the MagicRecombiner with parental data.
         
+        Args:
+            parent_haps: Matrix of parental haplotypes (P x N).
+            parent_names: List of names for each parental haplotype.
+            positions: Array of physical positions (bp) for each SNP.
+            chrom: Identifier for the chromosome.
+        """
+        # --- Basic Dimensions ---
+        self.P = parent_haps.shape[0]                   # Total number of parental haplotypes (P)
+        self.N = parent_haps.shape[1]                   # Total number of SNP markers (N)
+        
+        # --- Core Data Arrays ---
+        self.parent_haps = parent_haps.astype(np.int8)  # Store as int8 to minimize memory footprint
+        self.parent_names = np.array(parent_names)      # Array mapping each haplotype index to its parent name
+        self.positions = positions                      # Map of SNP indices to physical bp coordinates
+        self.chrom = chrom                              # Metadata: the chromosome being analyzed
+        
+        # --- Parent Mapping ---
+        # Group haplotype indices by their unique parent names (handling multi-haplotype parents)
         self.parent_to_haps: Dict[str, List[int]] = {}
         for i, name in enumerate(parent_names):
             self.parent_to_haps.setdefault(name, []).append(i)
-        self.unique_parents = list(self.parent_to_haps.keys())
-        self.n_parents = len(self.unique_parents)
+
+        # Pre-calculate unique parents for downstream classification
+        self.unique_parents = list(self.parent_to_haps.keys())  # List of unique founder names
+        self.n_parents = len(self.unique_parents)               # Count of unique founders
         
-    def _find_maximal_matches(self, query_hap: np.ndarray) -> List[MatchSegment]:
-        """Find all maximal matches between query_hap and all parent haplotypes."""
-        segments = []
-        for j in range(self.P):
-            parent_hap = self.parent_haps[j]
-            diff = (query_hap != parent_hap).astype(np.int8)
-            diff_ext = np.concatenate([[1], diff, [1]])
-            starts = np.where(np.diff(diff_ext) == -1)[0]
-            ends = np.where(np.diff(diff_ext) == 1)[0]
-            
-            for s, e in zip(starts, ends):
-                if e - s > 1:
-                    segments.append(MatchSegment(j=j, start=s, end=e))
-        return segments
+        # --- PBWT Initialization ---
+        # Build the PBWT prefix and divergence arrays for the parental panel.
+        # This is the "Search Engine" that enables fast haplotype matching.
+        self.pbwt = PBWT(self.parent_haps)
+        
+    def _find_maximal_matches(self, query_hap: np.ndarray, min_match_len: int = 2) -> List[MatchSegment]:
+        """Find all maximal matches between query_hap and all parent haplotypes using PBWT."""
+        return self.pbwt.match_query(query_hap, min_len=min_match_len)
     
     def _paint_haplotype(self, query_hap: np.ndarray, 
                          min_match_len: int = 2,
@@ -79,7 +89,7 @@ class MagicRecombiner:
         n_par = self.n_parents
         
         weights = np.zeros((n_par, N), dtype=np.float64)
-        matches = self._find_maximal_matches(query_hap)
+        matches = self._find_maximal_matches(query_hap, min_match_len=min_match_len)
         
         if not matches:
             warnings.warn("No matches found for a haplotype - check data!")
@@ -87,9 +97,7 @@ class MagicRecombiner:
         
         # Vectorized weight accumulation per match segment
         for m in matches:
-            seg_len = m.end - m.start
-            if seg_len < min_match_len:
-                continue
+            # We don't need the seg_len < min_match_len check here as PBWT already filtered it
             par_name = self.parent_names[m.j]
             par_idx = self.unique_parents.index(par_name)
             k = np.arange(m.start, m.end)
