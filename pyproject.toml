@@ -36,6 +36,7 @@ pyyaml = ">=6.0"
 rich = "15.0.0"
 rich-gradient = "0.3.12"
 rich-argparse = "1.8.0"
+loguru = "0.7.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
