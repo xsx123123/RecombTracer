@@ -45,7 +45,9 @@ class PBWT:
         self._build()
         
     def _build(self):
-        """Build prefix and divergence arrays in O(PN) time using vectorized numpy operations."""
+        """
+        Build prefix and divergence arrays in O(PN) time using vectorized numpy operations.
+        """
         P, N = self.P, self.N
         self.a[0] = np.arange(P)
         self.d[0] = 0
@@ -91,7 +93,7 @@ class PBWT:
                     v_idx += 1
                     q = 0
 
-    def match_query(self, query: np.ndarray, min_len: int = 2) -> List[MatchSegment]:
+    def match_query(self, query: np.ndarray, min_len: int = 3) -> List[MatchSegment]:
         """
         Find all maximal matches between query and panel haplotypes.
         

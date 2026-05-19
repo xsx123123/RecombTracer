@@ -18,6 +18,7 @@ from .utils import config2logo, show_versions
 from .core.convert import handle_convert_vcf
 from .core.run import handle_run
 from .core.pipeline import handle_pipeline
+from .report.generator import ReportGenerator
 
 
 class _LogoHelpAction(argparse.Action):
@@ -112,6 +113,12 @@ def add_run_parser(subparsers):
     )
 
     group_algo = parser.add_argument_group("algorithm parameters")
+    group_algo.add_argument(
+        "--min-match-len",
+        type=int,
+        default=2,
+        help="Minimum length of PBWT match segments (default: 2)",
+    )
     group_algo.add_argument(
         "--smooth-window",
         type=int,

@@ -27,6 +27,7 @@ A utility module is provided for converting standard VCF files into the NumPy-ba
 - rich 15.0.0
 - rich-gradient 0.3.12
 - rich-argparse 1.8.0
+- loguru 0.7.2
 
 Install via pip (editable install from source):
 
@@ -120,6 +121,7 @@ recombtracer run magic_input/LG1_magic.npz \
 |------|-------------|
 | `npz` | **Required.** Input `.npz` file produced by `convert-vcf`. |
 | `--out-dir` | Output directory for result CSVs (default: current directory). |
+| `--min-match-len` | Minimum length of PBWT match segments in SNPs (default: 2). |
 | `--smooth-window` | PBWT median-filter window size (default: 5). |
 | `--min-segment-snps` | Minimum SNPs per ancestry segment (default: 5). |
 | `--min-segment-bp` | Minimum bp length per ancestry segment (default: 1000). |
@@ -127,6 +129,31 @@ recombtracer run magic_input/LG1_magic.npz \
 | `--save-raw` | Also save raw PBWT results alongside HMM-refined results. |
 | `--progeny` | Comma-separated list of progeny to analyze (default: all in `.npz`). |
 | `--haplotype` | Only analyze a specific haplotype index (default: all). |
+
+#### Why is `--min-match-len` set to 2 by default?
+
+> **Note:** This default is provisional. We will perform extensive benchmarking across diverse MAGIC datasets in upcoming releases to determine the optimal default.
+
+In MAGIC (Multi-parent Advanced Generation Inter-Cross) populations, a default of `2` is intentionally lenient for the following reasons:
+
+1. **Small parental panels** — MAGIC populations typically have only 4–8 founders, so the risk of spurious matches is inherently low.
+2. **Short recombination fragments** — Crossover breakpoints can be separated by just a few SNPs; a higher threshold would miss these short segments.
+3. **Downstream filtering** — `extract_segments()` enforces `min_segment_snps` and `min_segment_bp`, and the HMM further refines calls, so being permissive at the PBWT stage is safe.
+
+##### Typical values in other PBWT-based tools
+
+| Application | Typical `min_len` | Rationale |
+|-------------|-------------------|-----------|
+| IBD detection (e.g., P-smoother) | 20–30 sites | Long exact matches are needed to rule out false-positive IBD segments. |
+| Genetic genealogy (Syllable-PBWT) | 127–255 sites (~0.4–0.9 Mb) | Searching for distant relatives requires matches spanning large physical distances. |
+| Recombination-rate inference | Tens to hundreds of sites | Balances runtime and match quality; overly short seeds explode the number of matches. |
+| Phasing / Imputation | >10 sites | Needs dense, informative matches to condition state selection. |
+
+##### Practical guidance
+
+- **High-density WGS data**: Try `--min-match-len 5` or `10` to reduce noise and speed up analysis.
+- **Array / capture data (lower density)**: Keep the default (`2` or `3`) to avoid missing short fragments.
+- **When in doubt**: Run with the default (`2`), inspect the raw confidence distribution in the output, and tighten the threshold if needed.
 
 ### Output files
 

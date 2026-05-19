@@ -73,6 +73,7 @@ def handle_run(args):
             paint_df = recombiner.paint_progeny(
                 prog_hap,
                 progeny_name=prog_name,
+                min_match_len=args.min_match_len,
                 smooth_window=args.smooth_window,
             )
             paint_hap = paint_df[paint_df["haplotype"] == h]

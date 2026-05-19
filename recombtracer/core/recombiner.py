@@ -11,8 +11,11 @@ from typing import List, Tuple, Dict, Optional
 import argparse
 import warnings
 
-
+# import pbwt algorithm from pbwt module
 from recombtracer.core.pbwt import PBWT, MatchSegment
+
+# Import logo utils
+from ..utils.log_utils import logger
 
 
 @dataclass
@@ -23,7 +26,7 @@ class AncestrySegment:
     This represents a contiguous genomic region assigned to a specific parent
     after PBWT painting and optional HMM smoothing.
     """
-    chrom: str       # Chromosome identifier (e.g., "1", "Chr01")
+    chrom: str       # Chromosome identifier (e.g., "1", "Chr01", "LG1")
     start_pos: int   # Physical start position in base pairs (bp)
     end_pos: int     # Physical end position in base pairs (bp)
     start_idx: int   # Start index in the SNP matrix/array (inclusive)
@@ -38,11 +41,7 @@ class MagicRecombiner:
     Identify recombination fragments in MAGIC progeny using PBWT-style painting.
     """
     
-    def __init__(self, 
-                 parent_haps: np.ndarray,
-                 parent_names: List[str],
-                 positions: np.ndarray,
-                 chrom: str = "1"):
+    def __init__(self, parent_haps: np.ndarray,parent_names: List[str],positions: np.ndarray,chrom: str = "1"):
         """
         Initialize the MagicRecombiner with parental data.
         
