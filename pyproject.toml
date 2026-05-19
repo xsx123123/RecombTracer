@@ -24,7 +24,10 @@ classifiers = [
 homepage = "https://github.com/xsx123123/RecombTracer"
 repository = "https://github.com/xsx123123/RecombTracer"
 packages = [{include = "recombtracer"}]
-include = ["recombtracer/config/*.yaml"]
+include = [
+    "recombtracer/config/*.yaml",
+    "recombtracer/report/templates/*.j2",
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -37,6 +40,8 @@ rich = "15.0.0"
 rich-gradient = "0.3.12"
 rich-argparse = "1.8.0"
 loguru = "0.7.2"
+jinja2 = ">=3.0"
+plotly = ">=5.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

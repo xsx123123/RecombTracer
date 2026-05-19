@@ -162,6 +162,12 @@ def _add_common_run_args(parser):
     """Add algorithm parameters shared by ``run`` and ``pipeline``."""
     group_algo = parser.add_argument_group("algorithm parameters")
     group_algo.add_argument(
+        "--min-match-len",
+        type=int,
+        default=2,
+        help="Minimum length of PBWT match segments (default: 2)",
+    )
+    group_algo.add_argument(
         "--smooth-window",
         type=int,
         default=5,
@@ -195,6 +201,55 @@ def _add_common_run_args(parser):
         type=int,
         default=None,
         help="Only analyze a specific haplotype index (default: all)",
+    )
+
+
+def add_report_parser(subparsers):
+    """
+    Add parser for report command (generate HTML report from CSV results).
+    """
+    parser = subparsers.add_parser(
+        "report",
+        parents=[_common_parent],
+        formatter_class=RichHelpFormatter,
+        add_help=False,
+        help="Generate an interactive HTML report from run results",
+    )
+    parser.add_argument(
+        "-h", "--help",
+        action=_LogoHelpAction,
+        nargs=0,
+        default=False,
+        help="Show this help message and exit",
+    )
+    parser.add_argument("results_dir", help="Directory containing *_hmm_*.csv result files")
+    parser.add_argument(
+        "--out",
+        default="recombtracer_report.html",
+        help="Output HTML file path (default: recombtracer_report.html)",
+    )
+    parser.add_argument(
+        "--chrom",
+        default=None,
+        help="Only report data for this chromosome (default: all found)",
+    )
+    parser.add_argument(
+        "--window-size",
+        type=int,
+        default=1_000_000,
+        help="Window size (bp) for hotspot calculation (default: 1,000,000)",
+    )
+    parser.add_argument(
+        "--step-size",
+        type=int,
+        default=None,
+        help="Step size for sliding windows (default: same as window-size)",
+    )
+    parser.add_argument(
+        "--hotspot-threshold",
+        type=float,
+        default=2.0,
+        help="Standard-deviation multiplier for hotspot threshold (default: 2.0)",
     )
 
 
@@ -273,6 +328,7 @@ def main():
     add_convert_vcf_parser(subparsers)
     add_run_parser(subparsers)
     add_pipeline_parser(subparsers)
+    add_report_parser(subparsers)
 
     args = parser.parse_args()
 
@@ -292,6 +348,17 @@ def main():
         handle_run(args)
     elif args.command == "pipeline":
         handle_pipeline(args)
+    elif args.command == "report":
+        gen = ReportGenerator(
+            results_dir=args.results_dir,
+            out_html=args.out,
+            chrom=args.chrom,
+            window_size=args.window_size,
+            step_size=args.step_size,
+            hotspot_threshold_std=args.hotspot_threshold,
+        )
+        out_path = gen.generate()
+        print(f"Report written to: {out_path}")
     else:
         config2logo(SOFTWARE_INFO)
         parser.print_help()

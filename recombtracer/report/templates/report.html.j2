@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --secondary: #64748b;
+      --accent: #0ea5e9;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+    }
+    body { 
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--primary);
+      scroll-behavior: smooth;
+    }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Dashboard Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 100vh;
+    }
+    @media (max-width: 1024px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 1.5rem;
+    }
+
+    .content-area { padding: 2rem; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+    .section-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      margin-bottom: 2rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .section-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: #fafafa;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Stats Styling */
+    .stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--secondary); margin-bottom: 0.25rem; }
+
+    /* Table Styling */
+    .data-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .data-table th { 
+      background: #f8fafc; 
+      padding: 0.75rem 1rem; 
+      text-align: left; 
+      font-size: 0.75rem; 
+      font-weight: 600; 
+      text-transform: uppercase; 
+      color: var(--secondary);
+      border-bottom: 1px solid var(--border);
+    }
+    .data-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; font-size: 0.875rem; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #f8fafc; }
+
+    /* Nav Links */
+    .nav-link {
+      display: flex;
+      align-items: center;
+      padding: 0.625rem 0.75rem;
+      color: var(--secondary);
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .nav-link:hover { color: var(--primary); background: #f1f5f9; }
+    .nav-link.active { color: var(--accent); background: #f0f9ff; }
+
+    /* Badge */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-primary { background: #e0f2fe; color: #0369a1; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+  </style>
+</head>
+<body>
+
+  <div class="dashboard-grid">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="flex items-center gap-2 mb-8">
+        <div class="w-8 h-8 rounded bg-slate-900 flex items-center justify-center text-white font-bold">R</div>
+        <span class="font-bold tracking-tight text-lg">RecombTracer</span>
+      </div>
+
+      <nav class="space-y-1">
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">Navigation</p>
+        <a href="#summary" class="nav-link active">Summary</a>
+        <a href="#mosaic" class="nav-link">Ancestry Mosaic</a>
+        <a href="#landscape" class="nav-link">Recombination Rate</a>
+        <a href="#distribution" class="nav-link">Breakpoint Distribution</a>
+        <a href="#contribution" class="nav-link">Parental Contribution</a>
+        <a href="#data" class="nav-link">Raw Data Table</a>
+      </nav>
+
+      <div class="mt-auto pt-8">
+        <div class="p-4 bg-slate-50 rounded-lg border border-slate-100">
+          <p class="text-xs font-semibold text-slate-500 mb-1">Methodology</p>
+          <p class="text-[11px] leading-relaxed text-slate-400">
+            Analysis performed using PBWT-based haplotype inference followed by HMM-based recombination detection.
+          </p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content-area">
+      
+      <!-- Top Bar -->
+      <div class="flex justify-between items-end mb-8">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900">Analysis Report</h1>
+            <span class="badge badge-primary">Chromosome {{ chrom }}</span>
+          </div>
+          <p class="text-sm text-slate-500">Generated on {{ generated_at }}</p>
+        </div>
+        <div class="text-right hidden sm:block">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Project</p>
+          <p class="text-sm font-medium">RecombTracer v1.0</p>
+        </div>
+      </div>
+
+      <!-- Summary Section -->
+      <section id="summary" class="mb-10">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div class="section-card p-5 mb-0">
+            <p class="stat-label">Progeny</p>
+            <p class="stat-value">{{ total_progeny }}</p>
+          </div>
+          <div class="section-card p-5 mb-0">
+            <p class="stat-label">Founding Parents</p>
+            <p class="stat-value">{{ parent_names|length }}</p>
+          </div>
+          <div class="section-card p-5 mb-0">
+            <p class="stat-label">Breakpoints</p>
+            <p class="stat-value text-sky-600">{{ total_breakpoints }}</p>
+          </div>
+          <div class="section-card p-5 mb-0">
+            <p class="stat-label">Mean Confidence</p>
+            <p class="stat-value text-emerald-600">{{ "%.3f"|format(mean_confidence) }}</p>
+          </div>
+          <div class="section-card p-5 mb-0">
+            <p class="stat-label">Hotspots</p>
+            <p class="stat-value text-rose-500">{{ hotspot_count }}</p>
+          </div>
+          <div class="section-card p-5 mb-0">
+            <p class="stat-label">Conserved</p>
+            <p class="stat-value text-blue-500">{{ coldspot_count }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Main Visualizations -->
+      <div id="mosaic" class="section-card">
+        <div class="section-header">
+          <h2 class="font-bold text-slate-800">Ancestry Mosaic</h2>
+          <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">Haplotype Segment Map</span>
+        </div>
+        <div class="p-2">
+          {{ div_mosaic | safe }}
+        </div>
+      </div>
+
+      <div id="landscape" class="section-card">
+        <div class="section-header">
+          <h2 class="font-bold text-slate-800">Recombination Landscape</h2>
+          <div class="flex gap-4">
+            <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div><span class="text-[10px] font-bold text-slate-500 uppercase">Hotspot</span></div>
+            <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div><span class="text-[10px] font-bold text-slate-500 uppercase">Conserved</span></div>
+          </div>
+        </div>
+        <div class="p-2">
+          {{ div_landscape | safe }}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div id="distribution" class="section-card mb-0">
+          <div class="section-header">
+            <h2 class="font-bold text-slate-800">Breakpoint Distribution</h2>
+          </div>
+          <div class="p-2">
+            {{ div_dist | safe }}
+          </div>
+        </div>
+        <div id="events" class="section-card mb-0">
+          <div class="section-header">
+            <h2 class="font-bold text-slate-800">Events per Progeny</h2>
+          </div>
+          <div class="p-2">
+            {{ div_per_prog | safe }}
+          </div>
+        </div>
+      </div>
+
+      <div id="contribution" class="section-card">
+        <div class="section-header">
+          <h2 class="font-bold text-slate-800">Parental Genomic Contribution</h2>
+        </div>
+        <div class="p-2">
+          {{ div_contrib | safe }}
+        </div>
+      </div>
+
+      <!-- Data Table -->
+      <div id="data" class="section-card">
+        <div class="section-header">
+          <h2 class="font-bold text-slate-800">Recombination Data</h2>
+          <div class="flex items-center gap-3">
+            <input
+              type="text"
+              id="tableSearch"
+              placeholder="Filter table..."
+              class="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 w-48 transition-all"
+              onkeyup="filterTable()"
+            />
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest"><span id="rowCount">{{ table_data|length }}</span> Records</span>
+          </div>
+        </div>
+        <div class="overflow-auto max-h-[600px]">
+          <table class="data-table" id="bpTable">
+            <thead>
+              <tr>
+                {% for col in table_columns %}
+                <th class="cursor-pointer select-none hover:bg-slate-200 transition-colors" onclick="sortTable({{ loop.index0 }})">
+                  {{ col.label }} <span class="text-slate-300 ml-1">↕</span>
+                </th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in table_data %}
+              <tr>
+                {% for col in table_columns %}
+                <td class="{% if col.key in ['position', 'confidence'] %}font-mono text-[13px]{% endif %}">
+                  {% if col.key == 'position' %}
+                    {{ "{:,}".format(row[col.key]|int) }}
+                  {% elif col.key == 'confidence' %}
+                    {{ "%.4f"|format(row[col.key]) }}
+                  {% else %}
+                    {{ row[col.key] }}
+                  {% endif %}
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <footer class="mt-12 pt-8 border-t border-slate-200 flex justify-between items-center text-[11px] text-slate-400">
+        <div>
+          &copy; 2026 RecombTracer Project. All rights reserved.
+        </div>
+        <div class="flex gap-6">
+          <a href="https://github.com/xsx123123/RecombTracer" class="hover:text-slate-600 transition-colors">Source Code</a>
+          <a href="#" class="hover:text-slate-600 transition-colors">Documentation</a>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // Intersection Observer for Sidebar Navigation
+    const observerOptions = { root: null, rootMargin: '0px', threshold: 0.5 };
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.toggle('active', link.getAttribute('href') === '#' + entry.target.id);
+          });
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('section[id], div[id]').forEach((section) => {
+      observer.observe(section);
+    });
+
+    // Table search filter
+    function filterTable() {
+      const input = document.getElementById('tableSearch');
+      const filter = input.value.toLowerCase();
+      const table = document.getElementById('bpTable');
+      const tr = table.getElementsByTagName('tr');
+      let visible = 0;
+      for (let i = 1; i < tr.length; i++) {
+        const tds = tr[i].getElementsByTagName('td');
+        let show = false;
+        for (let j = 0; j < tds.length; j++) {
+          if (tds[j] && tds[j].textContent.toLowerCase().indexOf(filter) > -1) {
+            show = true; break;
+          }
+        }
+        tr[i].style.display = show ? '' : 'none';
+        if (show) visible++;
+      }
+      document.getElementById('rowCount').textContent = visible;
+    }
+
+    // Table sort
+    let sortDir = {};
+    function sortTable(n) {
+      const table = document.getElementById('bpTable');
+      let rows = Array.from(table.rows).slice(1);
+      if (rows.length === 0) return;
+      const isNumeric = !isNaN(parseFloat(rows[0].cells[n].textContent.replace(/,/g, '')));
+      sortDir[n] = !sortDir[n];
+      rows.sort((a, b) => {
+        let x = a.cells[n].textContent.trim();
+        let y = b.cells[n].textContent.trim();
+        if (isNumeric) {
+          x = parseFloat(x.replace(/,/g, ''));
+          y = parseFloat(y.replace(/,/g, ''));
+        }
+        if (x < y) return sortDir[n] ? -1 : 1;
+        if (x > y) return sortDir[n] ? 1 : -1;
+        return 0;
+      });
+      rows.forEach(r => table.tBodies[0].appendChild(r));
+    }
+  </script>
+</body>
+</html>
