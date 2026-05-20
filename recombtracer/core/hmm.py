@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from typing import List, Tuple, Optional, Dict
 from scipy.special import logsumexp
 import warnings
+from ..utils.log_utils import logger
 
 
 @dataclass
@@ -191,6 +192,7 @@ class MagicHMM:
             Log probability of the path
         """
         N, n = self.N, self.n_states
+        logger.debug(f"    - Starting Viterbi: N={N}, states={n}")
         
         emission = self._build_emission_probs(pbwt_weights, progeny_alleles, parent_haps)
         
@@ -219,6 +221,7 @@ class MagicHMM:
         for k in range(N-2, -1, -1):
             path[k] = backptr[k+1, path[k+1]]
         
+        logger.debug(f"    - Viterbi completed. Log-prob: {log_prob:.2f}")
         return path, log_prob
     
     def forward_backward(self,
@@ -236,6 +239,7 @@ class MagicHMM:
             Log likelihood of the data
         """
         N, n = self.N, self.n_states
+        logger.debug(f"    - Starting Forward-Backward: N={N}, states={n}")
         
         emission = self._build_emission_probs(pbwt_weights, progeny_alleles, parent_haps)
         log_emission = np.log(emission)
@@ -267,6 +271,7 @@ class MagicHMM:
         posterior = np.exp(log_posterior)
         posterior = posterior / posterior.sum(axis=1, keepdims=True)
         
+        logger.debug(f"    - Forward-Backward completed. Log-likelihood: {log_likelihood:.2f}")
         return posterior, log_likelihood
     
     def decode(self,
@@ -424,13 +429,16 @@ def run_hmm_refinement(paint_df: pd.DataFrame,
         Recombination breakpoints
     """
     positions = paint_df['position'].values
+    N = len(paint_df)
+    
+    logger.debug(f"  - Refinement for {progeny_name} hap {haplotype}: N={N} SNPs")
     
     # Extract PBWT weights from paint_df (need p_parent columns or reconstruct)
     # For now, reconstruct from parent assignments (simplified)
     # In practice, modify MagicRecombiner to output raw weights
     unique_parents = sorted(paint_df['parent'].unique())
     n_par = len(unique_parents)
-    N = len(paint_df)
+    logger.debug(f"  - Building HMM weight matrix for {n_par} unique parents found in paint")
     
     # Build weight matrix from paint_df confidence
     # This is a simplification; ideally we pass raw weights from recombiner
@@ -477,6 +485,7 @@ def run_hmm_refinement(paint_df: pd.DataFrame,
     viterbi_df = pd.DataFrame(records)
     
     rec_df = hmm.call_recombinations_hmm(path, posterior)
+    logger.debug(f"  - HMM called {len(rec_df)} recombinations")
     
     # Build segments from Viterbi path
     segments = []
@@ -497,6 +506,7 @@ def run_hmm_refinement(paint_df: pd.DataFrame,
             })
     
     segments_df = pd.DataFrame(segments)
+    logger.debug(f"  - HMM identified {len(segments_df)} ancestry segments")
     
     return viterbi_df, segments_df, rec_df
 

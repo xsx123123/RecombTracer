@@ -25,19 +25,21 @@ def handle_run(args):
 
     logger, _ = logger_generator(args.out_dir, log_level=args.log_level)
 
+    logger.debug(f"Input arguments: {args}")
+
     if not os.path.isfile(args.npz):
+        logger.error(f"Input .npz file not found: {args.npz}")
         sys.exit(f"Error: file not found: {args.npz}")
 
     os.makedirs(args.out_dir, exist_ok=True)
 
-    logger.info(f"Loading: {args.npz}")
+    logger.info(f"Loading chromosome data: {args.npz}")
     data = load_chromosome_npz(args.npz)
     chrom = data["chrom"]
 
-    logger.info(f"Chromosome: {chrom}")
-    logger.info(f"Parents   : {len(data['parent_names'])}")
-    logger.info(f"Progeny   : {len(data['progeny_names'])}")
-    logger.info(f"SNPs      : {len(data['positions']):,}")
+    logger.info(f"Analysis parameters: chrom={chrom}, parents={len(data['parent_names'])}, progeny={len(data['progeny_names'])}, SNPs={len(data['positions']):,}")
+    logger.debug(f"Parent names: {data['parent_names']}")
+    logger.debug(f"Position range: {data['positions'][0]} - {data['positions'][-1]}")
 
     recombiner = MagicRecombiner(
         parent_haps=data["parent_haps"],
@@ -50,14 +52,19 @@ def handle_run(args):
     progeny_names = data["progeny_names"]
     if args.progeny:
         selected = [s.strip() for s in args.progeny.split(",")]
+        logger.info(f"Filtering progeny: {len(selected)} requested")
         missing = set(selected) - set(progeny_names)
         if missing:
+            logger.error(f"Progeny samples not found in .npz: {missing}")
             sys.exit(f"Error: progeny not in .npz: {missing}")
         progeny_names = selected
 
-    for prog_name in progeny_names:
+    total_progeny = len(progeny_names)
+    for idx, prog_name in enumerate(progeny_names, 1):
         prog_hap = data["progeny_haps"][prog_name]
         ploidy = prog_hap.shape[0]
+
+        logger.info(f"[{idx}/{total_progeny}] Processing individual: {prog_name} (ploidy={ploidy})")
 
         hap_indices = [args.haplotype] if args.haplotype is not None else list(range(ploidy))
         for h in hap_indices:
@@ -67,25 +74,32 @@ def handle_run(args):
                 )
                 continue
 
-            logger.info(f"  Processing {prog_name} haplotype {h} ...")
+            logger.info(f"  Processing haplotype {h} ...")
+            logger.debug(f"  Starting PBWT painting for {prog_name}_hap{h}")
 
             # --- PBWT paint ---
             paint_df = recombiner.paint_progeny(
-                prog_hap,
+                prog_hap[h:h+1],  # Ensure we only pass one haplotype to match expected shape if needed, but paint_progeny handles matrix
                 progeny_name=prog_name,
                 min_match_len=args.min_match_len,
                 smooth_window=args.smooth_window,
             )
-            paint_hap = paint_df[paint_df["haplotype"] == h]
+            # Re-filter just in case paint_progeny returned all (it returns a DF with all haplotypes passed)
+            # Actually, recombiner.paint_progeny(prog_hap[h:h+1]) will return haplotype 0 in its DF.
+            paint_hap = paint_df[paint_df["haplotype"] == 0].copy()
+            paint_hap["haplotype"] = h # Restore original haplotype index
 
+            logger.debug(f"  PBWT paint completed. Extracting raw segments...")
             segments_raw = recombiner.extract_segments(
-                paint_df,
+                paint_hap,
                 min_segment_snps=args.min_segment_snps,
                 min_segment_bp=args.min_segment_bp,
             )
             rec_raw = recombiner.call_recombinations(segments_raw)
+            logger.debug(f"  Raw analysis: {len(segments_raw)} segments, {len(rec_raw)} recombinations")
 
             # --- HMM refinement ---
+            logger.debug(f"  Starting HMM refinement for {prog_name}_hap{h}")
             viterbi_df, seg_hmm, rec_hmm = run_hmm_refinement(
                 paint_hap,
                 data["parent_haps"],
@@ -96,20 +110,24 @@ def handle_run(args):
             )
 
             if args.min_posterior > 0 and not rec_hmm.empty:
+                count_before = len(rec_hmm)
                 rec_hmm = rec_hmm[rec_hmm["confidence"] >= args.min_posterior].reset_index(drop=True)
+                logger.debug(f"  HMM confidence filtering (>= {args.min_posterior}): {count_before} -> {len(rec_hmm)}")
 
-            logger.info(f"    Done: raw={len(rec_raw)} HMM={len(rec_hmm)}")
+            logger.info(f"    Done: raw_rec={len(rec_raw)} HMM_rec={len(rec_hmm)} HMM_segments={len(seg_hmm)}")
 
             # --- Save results ---
             safe_name = prog_name.replace("/", "_").replace("\\", "_")
             base = f"{safe_name}_hap{h}_{chrom}"
 
+            logger.debug(f"  Saving HMM results to: {args.out_dir}/{base}_hmm_*.csv")
             viterbi_df.to_csv(os.path.join(args.out_dir, f"{base}_hmm_viterbi.csv"), index=False)
             seg_hmm.to_csv(os.path.join(args.out_dir, f"{base}_hmm_segments.csv"), index=False)
             rec_hmm.to_csv(os.path.join(args.out_dir, f"{base}_hmm_recombinations.csv"), index=False)
 
             if args.save_raw:
-                paint_df.to_csv(os.path.join(args.out_dir, f"{base}_paint.csv"), index=False)
+                logger.debug(f"  Saving raw results to: {args.out_dir}/{base}_paint.csv etc.")
+                paint_hap.to_csv(os.path.join(args.out_dir, f"{base}_paint.csv"), index=False)
                 pd.DataFrame(segments_raw).to_csv(
                     os.path.join(args.out_dir, f"{base}_segments_raw.csv"), index=False
                 )
@@ -129,5 +147,5 @@ def handle_run(args):
     summary_df = pd.DataFrame(summary_rows)
     summary_path = os.path.join(args.out_dir, f"summary_{chrom}.csv")
     summary_df.to_csv(summary_path, index=False)
-    logger.info(f"\n{summary_df.to_string(index=False)}")
-    logger.info(f"Results saved to: {args.out_dir}")
+    logger.info(f"\nFinal Summary for {chrom}:\n{summary_df.to_string(index=False)}")
+    logger.info(f"All results saved to directory: {args.out_dir}")

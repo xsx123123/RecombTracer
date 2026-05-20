@@ -74,7 +74,9 @@ class MagicRecombiner:
         # --- PBWT Initialization ---
         # Build the PBWT prefix and divergence arrays for the parental panel.
         # This is the "Search Engine" that enables fast haplotype matching.
+        logger.debug(f"Initializing MagicRecombiner for {chrom} with {self.P} parental haplotypes...")
         self.pbwt = PBWT(self.parent_haps)
+        logger.info(f"MagicRecombiner initialized for {chrom} ({self.n_parents} unique parents)")
         
     def _find_maximal_matches(self, query_hap: np.ndarray, min_match_len: int = 2) -> List[MatchSegment]:
         """Find all maximal matches between query_hap and all parent haplotypes using PBWT."""
@@ -87,12 +89,17 @@ class MagicRecombiner:
         N = self.N
         n_par = self.n_parents
         
+        logger.debug(f"    - Painting haplotype: N_snps={N}, n_parents={n_par}, min_match={min_match_len}")
+        
         weights = np.zeros((n_par, N), dtype=np.float64)
         matches = self._find_maximal_matches(query_hap, min_match_len=min_match_len)
         
         if not matches:
+            logger.warning("    - No PBWT matches found for this haplotype!")
             warnings.warn("No matches found for a haplotype - check data!")
             return np.full(N, -1, dtype=np.int32), np.zeros(N)
+        
+        logger.debug(f"    - Found {len(matches)} PBWT match segments")
         
         # Vectorized weight accumulation per match segment
         for m in matches:
@@ -107,6 +114,8 @@ class MagicRecombiner:
         total_weight = weights.sum(axis=0)
         valid = total_weight > 0
         
+        logger.debug(f"    - Valid sites (covered by matches): {np.sum(valid)}/{N} ({np.sum(valid)/N:.1%})")
+        
         best_parent_idx = np.zeros(N, dtype=np.int32)
         confidence = np.zeros(N, dtype=np.float64)
         
@@ -116,6 +125,7 @@ class MagicRecombiner:
         
         gaps = ~valid
         if np.any(gaps):
+            logger.debug(f"    - Interpolating {np.sum(gaps)} gap sites")
             valid_idx = np.where(valid)[0]
             if valid_idx.size > 0:
                 best_parent_idx[gaps] = np.interp(
@@ -140,18 +150,22 @@ class MagicRecombiner:
         ploidy = progeny_haps.shape[0]
         results = []
         
+        logger.debug(f"  - Painting {progeny_name} (ploidy={ploidy})")
+        
         for h in range(ploidy):
+            logger.debug(f"    - Haplotype {h}/{ploidy-1}")
             best_par, conf = self._paint_haplotype(
                 progeny_haps[h].astype(np.int8),
                 min_match_len=min_match_len
             )
             
             if smooth_window > 1:
+                logger.debug(f"    - Applying median filter (window={smooth_window})")
                 try:
                     from scipy.ndimage import median_filter
                     best_par = median_filter(best_par, size=smooth_window, mode='nearest')
                 except ImportError:
-                    pass
+                    logger.warning("    - scipy not installed, skipping median filter")
             
             for k in range(self.N):
                 results.append({
@@ -171,6 +185,8 @@ class MagicRecombiner:
         """Extract contiguous ancestry segments from painted results."""
         segments = []
         
+        logger.debug(f"  - Extracting segments (min_snps={min_segment_snps}, min_bp={min_segment_bp})")
+        
         for (prog, hap), group in paint_df.groupby(['progeny', 'haplotype']):
             group = group.sort_values('position').reset_index(drop=True)
             
@@ -180,6 +196,8 @@ class MagicRecombiner:
             parents = group['parent'].values
             changes = np.where(parents[1:] != parents[:-1])[0] + 1
             boundaries = [0] + changes.tolist() + [len(group)]
+            
+            logger.debug(f"    - Processing {prog} hap {hap}: {len(boundaries)-1} potential segments")
             
             for i in range(len(boundaries) - 1):
                 s, e = boundaries[i], boundaries[i+1]
@@ -201,7 +219,10 @@ class MagicRecombiner:
                         haplotype=int(hap),
                         score=float(seg_df['confidence'].mean())
                     ))
+                else:
+                    logger.debug(f"      - Filtered short segment: {n_snps} SNPs, {bp_len} bp, parent={seg_df['parent'].iloc[0]}")
         
+        logger.debug(f"    - Extracted {len(segments)} valid segments total")
         return segments
     
     def call_recombinations(self, segments: List[AncestrySegment]) -> pd.DataFrame:

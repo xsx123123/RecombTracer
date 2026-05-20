@@ -143,39 +143,15 @@ def vcf_to_magic_inputs(
 ) -> Dict:
     """
     Load one chromosome from a VCF and prepare inputs for MagicRecombiner.
-
-    Parameters
-    ----------
-    vcf_path : str
-    parent_samples : list of str
-        Founder/parent sample names.
-    progeny_samples : list of str
-        Progeny sample names.
-    chrom : str
-        Chromosome to load.
-    skip_missing : bool
-        Drop SNPs with missing genotypes (recommended).
-
-    Returns
-    -------
-    dict with keys:
-        - 'parent_haps'   : np.ndarray, shape (n_parents, n_snps)
-        - 'parent_names'  : list of str
-        - 'progeny_haps'  : dict, {name: np.ndarray shape (1, n_snps)}
-        - 'progeny_names' : list of str
-        - 'positions'     : np.ndarray, shape (n_snps,)
-        - 'chrom'         : str
     """
     logger.info(f"Preparing MAGIC inputs for chromosome {chrom}")
-    logger.info(f"  VCF: {vcf_path}")
-    logger.info(f"  Parents ({len(parent_samples)}): {parent_samples}")
-    logger.info(f"  Progeny ({len(progeny_samples)}): {progeny_samples[:10]}")
-    if len(progeny_samples) > 10:
-        logger.info(f"  ... and {len(progeny_samples) - 10} more")
+    logger.debug(f"  VCF path: {vcf_path}")
+    logger.debug(f"  Parents ({len(parent_samples)}): {parent_samples}")
+    logger.debug(f"  Progeny ({len(progeny_samples)}): {len(progeny_samples)} total")
 
     # Merge parent and progeny samples, preserving order and uniqueness
     all_samples = list(dict.fromkeys(parent_samples + progeny_samples))
-    logger.debug(f"Merged sample list ({len(all_samples)}): {all_samples}")
+    logger.debug(f"  Total samples to extract: {len(all_samples)}")
 
     # Extract chromosome data from VCF
     positions, haps = extract_homozygous_chromosome(
@@ -185,20 +161,18 @@ def vcf_to_magic_inputs(
     # Build index mappings
     parent_idx = [all_samples.index(s) for s in parent_samples]
     progeny_idx = [all_samples.index(s) for s in progeny_samples]
-    logger.debug(f"Parent indices: {parent_idx}")
-    logger.debug(f"Progeny indices: {progeny_idx}")
 
     # Extract parent haplotypes
     parent_haps = haps[parent_idx, :]
-    logger.info(f"Parent haplotype matrix shape: {parent_haps.shape}")
+    logger.debug(f"  Parent haplotype matrix shape: {parent_haps.shape}")
 
     # Extract progeny haplotypes
     progeny_haps_dict = {}
     for s, idx in zip(progeny_samples, progeny_idx):
         progeny_haps_dict[s] = haps[idx : idx + 1, :]
-        logger.debug(f"  Progeny '{s}' haplotype shape: {progeny_haps_dict[s].shape}")
-
-    logger.info(f"Prepared inputs for {len(progeny_samples)} progeny, {len(positions)} SNPs")
+    
+    logger.info(f"  Successfully prepared data for {len(progeny_samples)} progeny and {len(parent_samples)} parents")
+    logger.info(f"  Total SNPs retained: {len(positions):,}")
 
     return {
         "parent_haps": parent_haps,
@@ -221,14 +195,11 @@ def save_chromosome_npz(
 ):
     """
     Save prepared synthetic multi-parental population inputs to an .npz archive.
-
-    Because npz stores flat arrays, progeny haplotypes are saved with keys
-    like 'progeny_<name>'.
     """
-    logger.info(f"Saving chromosome data to {out_path}")
+    logger.info(f"Saving data to .npz: {out_path}")
     logger.debug(f"  Chromosome: {chrom}")
-    logger.debug(f"  Parent haplotypes: {parent_haps.shape}")
-    logger.debug(f"  Positions: {positions.shape}")
+    logger.debug(f"  SNPs: {len(positions):,}")
+    logger.debug(f"  Parents: {len(parent_names)}")
     logger.debug(f"  Progeny: {len(progeny_names)}")
 
     data = {
@@ -243,7 +214,8 @@ def save_chromosome_npz(
         data[f"progeny_{safe_name}"] = haps
 
     np.savez_compressed(out_path, **data)
-    logger.info(f"Saved {len(data)} arrays to {out_path}")
+    logger.debug(f"  Compression completed. Total arrays saved: {len(data)}")
+
 
 
 def load_chromosome_npz(npz_path: str) -> Dict:

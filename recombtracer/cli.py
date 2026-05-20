@@ -339,6 +339,20 @@ def main():
 
     args = parser.parse_args()
 
+    # Show version and exit
+    if args.version:
+        show_versions(
+            project_name=SOFTWARE_INFO.get("app_name", "RecombTracer"),
+            deps=["numpy", "pandas", "scipy", "cyvcf2", "pyyaml", "rich"],
+            extras={
+                "Version": SOFTWARE_INFO.get("version", "unknown"),
+                "Author": SOFTWARE_INFO.get("author", "unknown"),
+                "Email": SOFTWARE_INFO.get("email", ""),
+                "Description": SOFTWARE_INFO.get("description", ""),
+            },
+        )
+        return
+
     # Show logo + help when: no command, -h/--help, or unknown command
     if args.help or not args.command:
         config2logo(SOFTWARE_INFO)
