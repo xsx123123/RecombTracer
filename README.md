@@ -27,7 +27,7 @@ A utility module is provided for converting standard VCF files into the NumPy-ba
 - rich 15.0.0
 - rich-gradient 0.3.12
 - rich-argparse 1.8.0
-- loguru 0.7.2
+- loguru >=0.7.2
 
 Install via pip (editable install from source):
 
