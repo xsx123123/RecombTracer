@@ -150,7 +150,11 @@ def handle_run(args, logger=None):
     data = load_chromosome_npz(args.npz)
     chrom = data["chrom"]
 
-    logger.info(f"Analysis parameters: chrom={chrom}, parents={len(data['parent_names'])}, progeny={len(data['progeny_names'])}, SNPs={len(data['positions']):,}")
+    workers = getattr(args, "workers", 1)
+    if workers == 0:
+        import multiprocessing
+        workers = multiprocessing.cpu_count() or 1
+    logger.info(f"Analysis parameters: chrom={chrom}, parents={len(data['parent_names'])}, progeny={len(data['progeny_names'])}, SNPs={len(data['positions']):,}, workers={workers}")
     logger.debug(f"Parent names: {data['parent_names']}")
     logger.debug(f"Position range: {data['positions'][0]} - {data['positions'][-1]}")
 

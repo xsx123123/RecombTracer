@@ -56,8 +56,9 @@ def handle_pipeline(args):
     # ------------------------------------------------------------------
     # Step 2: Run PBWT + HMM analysis
     # ------------------------------------------------------------------
+    workers = getattr(args, "workers", 1)
     logger.info("-" * 60)
-    logger.info("[STEP 2/2] Running PBWT + HMM recombination analysis")
+    logger.info(f"[STEP 2/2] Running PBWT + HMM recombination analysis (workers={workers})")
     logger.debug(f"Analysis params: window={args.smooth_window}, min_snps={args.min_segment_snps}, min_bp={args.min_segment_bp}, posterior={args.min_posterior}")
 
     run_args = types.SimpleNamespace(
