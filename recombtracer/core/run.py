@@ -12,7 +12,7 @@ from .recombiner import MagicRecombiner
 from .vcf import load_chromosome_npz
 
 
-def handle_run(args):
+def handle_run(args, logger=None):
     """
     Pipeline for the ``run`` command.
 
@@ -20,10 +20,12 @@ def handle_run(args):
     ----------
     args : argparse.Namespace
         Parsed CLI arguments.
+    logger : loguru.Logger, optional
+        External logger to use. If None, a new one is created.
     """
-    from ..utils import logger_generator
-
-    logger, _ = logger_generator(args.out_dir, log_level=args.log_level)
+    if logger is None:
+        from ..utils import logger_generator
+        logger, _ = logger_generator(args.out_dir, log_level=args.log_level)
 
     logger.debug(f"Input arguments: {args}")
 

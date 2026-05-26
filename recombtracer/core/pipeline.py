@@ -46,7 +46,7 @@ def handle_pipeline(args):
         keep_missing=args.keep_missing,
         log_level=args.log_level,
     )
-    handle_convert_vcf(convert_args)
+    handle_convert_vcf(convert_args, logger=logger)
 
     npz_path = os.path.join(args.out_dir, f"{args.chrom}_magic.npz")
     if not os.path.exists(npz_path):
@@ -73,7 +73,7 @@ def handle_pipeline(args):
         progeny=args.progeny,
         log_level=args.log_level,
     )
-    handle_run(run_args)
+    handle_run(run_args, logger=logger)
 
     logger.info("=" * 60)
     logger.info("Pipeline completed successfully.")
