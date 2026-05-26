@@ -7,7 +7,6 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import numpy as np
 import pandas as pd
 
 from .hmm import run_hmm_refinement
@@ -23,7 +22,7 @@ def _analyze_single_haplotype(task):
     ----------
     task : tuple
         (idx, total, prog_name, h, prog_hap, recombiner, parent_haps,
-         parent_names, chrom, args, logger)
+         parent_names, chrom, args)
 
     Returns
     -------
@@ -46,16 +45,15 @@ def _analyze_single_haplotype(task):
     ) = task
 
     ploidy = prog_hap.shape[0]
-    logger.info(f"[{idx}/{total}] Processing individual: {prog_name} (ploidy={ploidy})")
-
     if h < 0 or h >= ploidy:
         logger.warning(
-            f"  Warning: haplotype {h} out of range for {prog_name} (ploidy={ploidy})"
+            f"[{idx}/{total}] {prog_name} hap{h} out of range (ploidy={ploidy})"
         )
         return None
 
-    logger.info(f"  Processing haplotype {h} ...")
-    logger.debug(f"  Starting PBWT painting for {prog_name}_hap{h}")
+    # 合并为单行日志，避免多线程交错
+    logger.info(f"[{idx}/{total}] {prog_name} hap{h} (ploidy={ploidy}) — start")
+    logger.debug(f"  PBWT painting start")
 
     # --- PBWT paint ---
     paint_df = recombiner.paint_progeny(
@@ -92,7 +90,10 @@ def _analyze_single_haplotype(task):
         rec_hmm = rec_hmm[rec_hmm["confidence"] >= args.min_posterior].reset_index(drop=True)
         logger.debug(f"  HMM confidence filtering (>= {args.min_posterior}): {count_before} -> {len(rec_hmm)}")
 
-    logger.info(f"    Done: raw_rec={len(rec_raw)} HMM_rec={len(rec_hmm)} HMM_segments={len(seg_hmm)}")
+    logger.info(
+        f"[{idx}/{total}] {prog_name} hap{h} — done | "
+        f"raw_rec={len(rec_raw)} hmm_rec={len(rec_hmm)} segments={len(seg_hmm)}"
+    )
 
     # --- Save results ---
     safe_name = prog_name.replace("/", "_").replace("\\", "_")
