@@ -72,6 +72,7 @@ def handle_pipeline(args):
         haplotype=args.haplotype,
         progeny=args.progeny,
         log_level=args.log_level,
+        workers=getattr(args, "workers", 1),
     )
     handle_run(run_args, logger=logger)
 
