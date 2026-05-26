@@ -164,6 +164,13 @@ def add_run_parser(subparsers):
         help="Comma-separated list of progeny to analyze (default: all in .npz)",
     )
 
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=10,
+        help="Number of parallel workers for progeny analysis (default: 10, 0=auto-detect CPU count)",
+    )
+
 
 def _add_common_run_args(parser):
     """Add algorithm parameters shared by ``run`` and ``pipeline``."""

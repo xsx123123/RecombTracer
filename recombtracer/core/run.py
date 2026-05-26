@@ -4,8 +4,7 @@ PBWT + HMM analysis pipeline for the ``run`` CLI command.
 
 import os
 import sys
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import pandas as pd
 
@@ -216,16 +215,14 @@ def handle_run(args, logger=None):
             if result is not None:
                 summary_rows.append(result)
     else:
-        logger.info(f"Running with {workers} parallel workers ...")
-        summary_lock = threading.Lock()
-        with ThreadPoolExecutor(max_workers=workers) as executor:
+        logger.info(f"Running with {workers} parallel workers (processes) ...")
+        with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = {executor.submit(_analyze_single_haplotype, t): t for t in tasks}
             for future in as_completed(futures):
                 try:
                     result = future.result()
                     if result is not None:
-                        with summary_lock:
-                            summary_rows.append(result)
+                        summary_rows.append(result)
                 except Exception as exc:
                     task = futures[future]
                     prog_name, h = task[2], task[3]
