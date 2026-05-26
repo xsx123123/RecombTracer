@@ -442,9 +442,9 @@ def run_hmm_refinement(paint_df: pd.DataFrame,
     
     # Build weight matrix from paint_df confidence
     # This is a simplification; ideally we pass raw weights from recombiner
-    weights = np.zeros((n_par, N), dtype=np.float64)
+    weights = np.zeros((n_par, N), dtype=np.float64)   # Create empty matrix
     for k in range(N):
-        par = paint_df.iloc[k]['parent']
+        par = paint_df.iloc[k]['parent']               # get win snp parent & confidence
         conf = paint_df.iloc[k]['confidence']
         j = unique_parents.index(par)
         weights[j, k] = conf
@@ -511,85 +511,84 @@ def run_hmm_refinement(paint_df: pd.DataFrame,
     return viterbi_df, segments_df, rec_df
 
 
-def demo_hmm():
-    """Demonstrate PBWT + HMM integration with synthetic data."""
-    np.random.seed(42)
-    
-    n_snps = 300
-    n_parents = 4
-    positions = np.cumsum(np.random.randint(10000, 50000, size=n_snps))
-    
-    # Create 4 independent founder haplotypes
-    parent_haps = np.random.randint(0, 2, size=(n_parents, n_snps)).astype(np.int8)
-    parent_names = [f"P{i+1}" for i in range(n_parents)]
-    
-    # Synthetic progeny with recombination at SNP 100 and 200
-    prog_hap = np.zeros(n_snps, dtype=np.int8)
-    prog_hap[:100] = parent_haps[0, :100]
-    prog_hap[100:200] = parent_haps[1, 100:200]
-    prog_hap[200:] = parent_haps[2, 200:]
-    
-    # Add genotyping errors (~2%)
-    error_mask = np.random.random(n_snps) < 0.02
-    prog_hap[error_mask] = 1 - prog_hap[error_mask]
-    
-    print("=" * 70)
-    print("PBWT + HMM Integration Demo")
-    print("=" * 70)
-    print(f"Setup: {n_parents} parents, {n_snps} SNPs")
-    print(f"True path: P1[0:100] -> P2[100:200] -> P3[200:300]")
-    print(f"Genotyping error rate: 2% ({error_mask.sum()} errors)")
-    print()
-    
-    from .recombiner import MagicRecombiner
-    
-    recombiner = MagicRecombiner(parent_haps, parent_names, positions, "1")
-    paint_df = recombiner.paint_progeny(
-        prog_hap.reshape(1, -1),
-        progeny_name="demo",
-        smooth_window=1
-    )
-    
-    viterbi_df, seg_df, rec_df = run_hmm_refinement(
-        paint_df[paint_df['haplotype'] == 0],
-        parent_haps,
-        parent_names,
-        prog_hap,
-        params=HMMParams(rec_rate_per_bp=2e-8, genotyping_error=0.02)
-    )
-    
-    print("Viterbi path (transition regions):")
-    show_idx = list(range(95, 105)) + list(range(195, 205))
-    print(viterbi_df.iloc[show_idx][['position', 'viterbi_parent', 'viterbi_posterior']].to_string(index=False))
-    print()
-    
-    print("Inferred segments:")
-    print(seg_df.to_string(index=False))
-    print()
-    
-    print("Inferred recombinations:")
-    if len(rec_df) > 0:
-        print(rec_df[['position', 'left_parent', 'right_parent', 'confidence']].to_string(index=False))
-    else:
-        print("  None")
-    print()
-    
-    raw_parents = paint_df[paint_df['haplotype'] == 0]['parent'].values
-    viterbi_parents = viterbi_df['viterbi_parent'].values
-    true_parents = np.array(['P1']*100 + ['P2']*100 + ['P3']*100)
-    
-    raw_acc = (raw_parents == true_parents).mean()
-    hmm_acc = (viterbi_parents == true_parents).mean()
-    
-    print(f"Accuracy comparison (per-SNP):")
-    print(f"  Raw PBWT paint:  {raw_acc:.3f}")
-    print(f"  HMM Viterbi:     {hmm_acc:.3f}")
-    print(f"  Improvement:     {hmm_acc - raw_acc:+.3f}")
-    
-    if hmm_acc > raw_acc:
-        print(f"\nHMM corrected {int((hmm_acc - raw_acc) * n_snps)} SNP calls!")
-    print()
-    print("Key insight: PBWT finds local matches; HMM enforces continuity.")
-
-
+# def demo_hmm():
+#    """Demonstrate PBWT + HMM integration with synthetic data."""
+#    np.random.seed(42)
+#    
+#    n_snps = 300
+#    n_parents = 4
+#    positions = np.cumsum(np.random.randint(10000, 50000, size=n_snps))
+#    
+#    # Create 4 independent founder haplotypes
+#    parent_haps = np.random.randint(0, 2, size=(n_parents, n_snps)).astype(np.int8)
+#    parent_names = [f"P{i+1}" for i in range(n_parents)]
+#    
+#    # Synthetic progeny with recombination at SNP 100 and 200
+#    prog_hap = np.zeros(n_snps, dtype=np.int8)
+#    prog_hap[:100] = parent_haps[0, :100]
+#    prog_hap[100:200] = parent_haps[1, 100:200]
+#    prog_hap[200:] = parent_haps[2, 200:]
+#    
+#    # Add genotyping errors (~2%)
+#    error_mask = np.random.random(n_snps) < 0.02
+#    prog_hap[error_mask] = 1 - prog_hap[error_mask]
+#    
+#    print("=" * 70)
+#    print("PBWT + HMM Integration Demo")
+#    print("=" * 70)
+#    print(f"Setup: {n_parents} parents, {n_snps} SNPs")
+#    print(f"True path: P1[0:100] -> P2[100:200] -> P3[200:300]")
+#    print(f"Genotyping error rate: 2% ({error_mask.sum()} errors)")
+#    print()
+#    
+#    from .recombiner import MagicRecombiner
+#    
+#    recombiner = MagicRecombiner(parent_haps, parent_names, positions, "1")
+#    paint_df = recombiner.paint_progeny(
+#        prog_hap.reshape(1, -1),
+#        progeny_name="demo",
+#        smooth_window=1
+#    )
+#    
+#    viterbi_df, seg_df, rec_df = run_hmm_refinement(
+#        paint_df[paint_df['haplotype'] == 0],
+#        parent_haps,
+#        parent_names,
+#        prog_hap,
+#        params=HMMParams(rec_rate_per_bp=2e-8, genotyping_error=0.02)
+#    )
+#    
+#    print("Viterbi path (transition regions):")
+#    show_idx = list(range(95, 105)) + list(range(195, 205))
+#    print(viterbi_df.iloc[show_idx][['position', 'viterbi_parent', 'viterbi_posterior']].to_string(index=False))
+#    print()
+#    
+#    print("Inferred segments:")
+#    print(seg_df.to_string(index=False))
+#    print()
+#    
+#    print("Inferred recombinations:")
+#    if len(rec_df) > 0:
+#        print(rec_df[['position', 'left_parent', 'right_parent', 'confidence']].to_string(index=False))
+#    else:
+#        print("  None")
+#    print()
+#    
+#    raw_parents = paint_df[paint_df['haplotype'] == 0]['parent'].values
+#    viterbi_parents = viterbi_df['viterbi_parent'].values
+#    true_parents = np.array(['P1']*100 + ['P2']*100 + ['P3']*100)
+#    
+#    raw_acc = (raw_parents == true_parents).mean()
+#    hmm_acc = (viterbi_parents == true_parents).mean()
+#    
+#    print(f"Accuracy comparison (per-SNP):")
+#    print(f"  Raw PBWT paint:  {raw_acc:.3f}")
+#    print(f"  HMM Viterbi:     {hmm_acc:.3f}")
+#    print(f"  Improvement:     {hmm_acc - raw_acc:+.3f}")
+#    
+#    if hmm_acc > raw_acc:
+#        print(f"\nHMM corrected {int((hmm_acc - raw_acc) * n_snps)} SNP calls!")
+#    print()
+#    print("Key insight: PBWT finds local matches; HMM enforces continuity.")
+#
 # Command-line entry point moved to recombtracer.cli

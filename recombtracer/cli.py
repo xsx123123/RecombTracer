@@ -209,6 +209,12 @@ def _add_common_run_args(parser):
         default=None,
         help="Only analyze a specific haplotype index (default: all)",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=10,
+        help="Number of parallel workers for progeny analysis (default: 10, 0=auto-detect CPU count)",
+    )
 
 
 def add_report_parser(subparsers):
