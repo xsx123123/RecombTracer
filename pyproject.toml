@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 name = "recombtracer"
 version = "0.0.1"
-description = "Recombination breakpoint detection in MAGIC populations"
+description = "Recombination breakpoint detection in synthetic multi-parental populations"
 readme = "README.md"
 license = "MIT"
 authors = ["JZHANG zhangjian199567@outlook.com"]
